@@ -33,6 +33,7 @@ final class HTTPHookServer {
     private var handler: HookHandler?
     private(set) var activePort: UInt16 = 0
     private(set) var bearerToken: String = ""
+    private var isStopping = false
 
     /// Per-connection receive buffers, keyed by ObjectIdentifier of the NWConnection.
     private var connectionBuffers: [ObjectIdentifier: Data] = [:]
@@ -47,12 +48,20 @@ final class HTTPHookServer {
     /// Generates a cryptographic bearer token and writes it to the token file (SEC-01, SEC-02).
     func start(handler: @escaping HookHandler) {
         self.handler = handler
+        if listener != nil {
+            isStopping = false
+            persistRuntimeState()
+            return
+        }
+
+        isStopping = false
         generateAndWriteToken()
         startListener(portIndex: 0)
     }
 
     /// Stop the HTTP server and remove the port file and token file.
     func stop() {
+        isStopping = true
         listener?.cancel()
         listener = nil
         removePort()
@@ -67,7 +76,11 @@ final class HTTPHookServer {
         var bytes = [UInt8](repeating: 0, count: 32)
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
         bearerToken = bytes.map { String(format: "%02x", $0) }.joined()
+        writeToken()
+    }
 
+    /// Persist the current bearer token to disk if the server is already running.
+    private func writeToken() {
         let fm = FileManager.default
         let dir = (Self.tokenFile as NSString).deletingLastPathComponent
         try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
@@ -186,6 +199,15 @@ final class HTTPHookServer {
         try? FileManager.default.removeItem(atPath: Self.portFile)
     }
 
+    private func persistRuntimeState() {
+        if !bearerToken.isEmpty {
+            writeToken()
+        }
+        if activePort != 0 {
+            writePort(activePort)
+        }
+    }
+
     // MARK: - Private: Listener Lifecycle
 
     private func startListener(portIndex: Int) {
@@ -215,11 +237,16 @@ final class HTTPHookServer {
                 guard let self else { return }
                 switch state {
                 case .ready:
+                    guard self.listener === newListener else { return }
                     let boundPort = newListener.port?.rawValue ?? 0
                     self.activePort = boundPort
                     self.listenerError = nil
+                    self.isStopping = false
                     self.writePort(boundPort)
                 case .failed(let error):
+                    guard self.listener === newListener else { return }
+                    self.activePort = 0
+                    self.listenerError = error.localizedDescription
                     // Check for port-in-use error — try next port
                     if case .posix(let posixError) = error, posixError == .EADDRINUSE {
                         newListener.cancel()
@@ -230,7 +257,12 @@ final class HTTPHookServer {
                         self.startListener(portIndex: portIndex + 1)
                     }
                 case .cancelled:
-                    self.removePort()
+                    guard self.listener === newListener || self.isStopping else { return }
+                    if self.isStopping {
+                        self.removePort()
+                        self.removeToken()
+                        self.activePort = 0
+                    }
                 default:
                     break
                 }
@@ -245,8 +277,8 @@ final class HTTPHookServer {
             }
         }
 
-        newListener.start(queue: .main)
         self.listener = newListener
+        newListener.start(queue: .main)
     }
 
     // MARK: - Private: HTTP Parsing

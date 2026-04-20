@@ -188,28 +188,31 @@ struct OnboardingKeycap: View {
 
 // MARK: - Preview
 
-#Preview("Style Kit") {
-    VStack(spacing: 40) {
-        OnboardingSectionHeader(
-            eyebrow: "Eight States",
-            headline: "At a glance, know exactly what Claude is up to.",
-            caption: "Never miss an update. Respond without breaking your flow."
-        )
+private struct OnboardingStyleKitPreview: PreviewProvider {
+    static var previews: some View {
+        VStack(spacing: 40) {
+            OnboardingSectionHeader(
+                eyebrow: "Eight States",
+                headline: "At a glance, know exactly what Claude is up to.",
+                caption: "Never miss an update. Respond without breaking your flow."
+            )
 
-        HStack(spacing: 8) {
-            OnboardingKeycap(text: "⌘⇧A")
-            OnboardingKeycap(text: "⌘⇧D")
-            OnboardingKeycap(text: "⌘⇧M")
-        }
+            HStack(spacing: 8) {
+                OnboardingKeycap(text: "⌘⇧A")
+                OnboardingKeycap(text: "⌘⇧D")
+                OnboardingKeycap(text: "⌘⇧M")
+            }
 
-        HStack(spacing: 12) {
-            OnboardingGhostButton(title: "Skip", action: {})
-            OnboardingPillButton(title: "Get Started", action: {})
+            HStack(spacing: 12) {
+                OnboardingGhostButton(title: "Skip", action: {})
+                OnboardingPillButton(title: "Get Started", action: {})
+            }
         }
+        .padding(48)
+        .frame(width: 600, height: 440)
+        .background(OnboardingTheme.parchment)
+        .previewDisplayName("Style Kit")
     }
-    .padding(48)
-    .frame(width: 600, height: 440)
-    .background(OnboardingTheme.parchment)
 }
 
 // MARK: - Onboarding card style (selectable cards for engine pickers)

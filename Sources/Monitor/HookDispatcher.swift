@@ -29,6 +29,8 @@ extension ClaudeMonitor {
         switch hookEventName {
         case "UserPromptSubmit":
             eventType = "pre_tool"  // Reuse working-state transition (AUDIT-03)
+        case "SessionStart":
+            eventType = "session_start"
         case "PreToolUse":
             eventType = "pre_tool"
         case "PostToolUse":
@@ -47,6 +49,8 @@ extension ClaudeMonitor {
             } else {
                 errorDetail = "Unknown error"
             }
+        case "SessionEnd":
+            eventType = "session_end"
 
         case "PermissionRequest":
             return handlePermissionRequest(payload, sessionId: sessionId, toolName: toolName, ts: ts)

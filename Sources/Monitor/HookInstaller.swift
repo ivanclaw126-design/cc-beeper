@@ -9,11 +9,11 @@ struct HookInstaller {
     /// Matching `cc-beeper/port` distinguishes HTTP hooks from old Python hooks.
     static let hookMarker = "cc-beeper/port"
 
-    /// Base curl command for async monitoring hooks (PreToolUse, PostToolUse, Stop, StopFailure).
+    /// Base curl command for async monitoring hooks.
     /// Reads port file, pipes stdin JSON to CC-Beeper's HTTP endpoint.
     /// -s: silent mode (no progress), -o /dev/null: suppress response body,
     /// --max-time 3: fail fast if server unresponsive, || true: never fail the hook.
-    private static let asyncCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -o /dev/null -X POST http://localhost:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 3 || true"
+    private static let asyncCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -o /dev/null -X POST http://127.0.0.1:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 3 || true"
 
     /// Blocking curl command for Notification and PermissionRequest hooks (per D-01, D-02).
     /// Notification is blocking because modern Claude Code routes permission_prompt via
@@ -23,7 +23,7 @@ struct HookInstaller {
     /// No -o /dev/null: stdout carries the hookSpecificOutput response back to Claude Code.
     /// No || true: if CC-Beeper isn't running, curl fails and Claude Code shows terminal prompt.
     /// --max-time 55: client-side timeout (hook timeout is 60 seconds).
-    private static let blockingCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -X POST http://localhost:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 55"
+    private static let blockingCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -X POST http://127.0.0.1:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 55"
 
     /// Returns true when settings.json contains at least one hook entry
     /// whose command references cc-beeper/port (HTTP hooks).
@@ -52,7 +52,7 @@ struct HookInstaller {
     /// Steps:
     /// 1. Create ipcDir with 0o700 permissions.
     /// 2. Load existing settings.json (or start with empty dict).
-    /// 3. For each of the 4 async hook events + 2 blocking events:
+    /// 3. For each of the 7 async hook events + 2 blocking events:
     ///    remove old CC-Beeper entries (both Python cc-beeper-hook.py and HTTP
     ///    cc-beeper/port), then append a fresh HTTP curl entry.
     /// 4. Write settings back preserving formatting (per spec section 9 item 10).
@@ -71,16 +71,18 @@ struct HookInstaller {
             settings = parsed
         }
 
-        // 3. Update hook entries for 4 async events + 2 blocking events
+        // 3. Update hook entries for 7 async events + 2 blocking events
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
 
         // Async hook event configurations: (event name, timeout in seconds, statusMessage or nil)
         let asyncConfigs: [(String, Int, String?)] = [
             ("UserPromptSubmit", 5, nil),  // Fires when user submits prompt — prevents Stewing bug (AUDIT-03)
+            ("SessionStart",   5, nil),  // Fires when a new Claude session begins/resumes
             ("PreToolUse",  5, "CC-Beeper monitoring\u{2026}"),  // \u2026 = ellipsis
             ("PostToolUse", 5, nil),
             ("Stop",        5, nil),
             ("StopFailure", 5, nil),
+            ("SessionEnd",    5, nil),
         ]
 
         // Blocking hook configurations (per D-01, D-02, RESEARCH.md Pitfall 5).
@@ -95,7 +97,7 @@ struct HookInstaller {
         ]
 
         // Events that had Python hooks but are no longer needed — clean up only
-        let removedEvents = ["SessionStart", "SessionEnd", "PostToolUseFailure"]
+        let removedEvents = ["PostToolUseFailure"]
 
         // Clean up removed events (remove CC-Beeper entries, keep user entries)
         for event in removedEvents {

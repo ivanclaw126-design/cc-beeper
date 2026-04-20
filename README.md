@@ -145,7 +145,7 @@ Everything is optional and can be changed later in Settings.
 <details>
 <summary><strong>How the hooks work</strong></summary>
 
-CC-Beeper binds to a local port (19222-19230) on launch and registers 7 hook scripts in `~/.claude/settings.json`: UserPromptSubmit, PreToolUse, PostToolUse, Stop, StopFailure (all async), plus Notification and PermissionRequest (blocking — CC-Beeper holds the TCP connection open until the user responds).
+CC-Beeper binds to a local port (19222-19230) on launch and registers 9 hook scripts in `~/.claude/settings.json`: UserPromptSubmit, SessionStart, PreToolUse, PostToolUse, Stop, StopFailure, and SessionEnd (all async), plus Notification and PermissionRequest (blocking — CC-Beeper holds the TCP connection open until the user responds).
 
 Hooks are identified by `cc-beeper/port` in the command string for safe update/removal without touching user hooks.
 
