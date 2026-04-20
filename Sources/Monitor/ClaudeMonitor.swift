@@ -344,8 +344,7 @@ final class ClaudeMonitor: ObservableObject {
                 }
                 guard self.pendingPermission == nil else { return }
                 // No hook activity for the full interval — treat any lingering
-                // sessions as stale (SessionEnd hook was removed in v7.0, so
-                // sessions at .done/.error never get cleaned up otherwise).
+                // sessions as stale even if Claude Code never delivered SessionEnd.
                 self.sessionStates.removeAll()
                 self.sessionLastSeen.removeAll()
                 self.sessionCount = 0

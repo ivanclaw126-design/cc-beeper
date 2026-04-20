@@ -140,8 +140,8 @@ final class HTTPHookServerTests: XCTestCase {
         XCTAssertTrue(response200body.contains("Content-Length: 57\r\n"))
     }
 
-    /// Verify that exactly 5 hook event names are registered (4 async + 1 async notification,
-    /// matching the Phase 35 hook registration list from the research document).
+    /// Verify that the hook registration includes session lifecycle events in addition to the
+    /// monitoring and permission hooks.
     ///
     /// Hook events to register in settings.json:
     /// - PreToolUse (async, statusMessage)
@@ -150,34 +150,36 @@ final class HTTPHookServerTests: XCTestCase {
     /// - Stop (async)
     /// - StopFailure (async)
     ///
-    /// Total: 5 events (all async curl hooks)
+    /// Total: 9 events (7 async + 2 blocking)
     func testSixHookEventsRegistered() throws {
-        // The hook events CC-Beeper registers in Phase 35
+        // The hook events CC-Beeper registers.
         let hookEvents = [
+            "UserPromptSubmit",
+            "SessionStart",
             "PreToolUse",
             "PostToolUse",
             "Notification",
             "Stop",
             "StopFailure",
+            "SessionEnd",
+            "PermissionRequest",
         ]
 
-        // Verify count — Phase 35 registers 5 hooks (all async)
-        // Note: the plan mentions "6 total" (4 async + 2 blocking) but research clarifies
-        // that PermissionRequest is deprecated; Notification covers permission_prompt.
-        // The actual hook entries are 5.
-        XCTAssertEqual(hookEvents.count, 5, "Phase 35 should register exactly 5 hook events")
+        XCTAssertEqual(hookEvents.count, 9, "Hook installer should register exactly 9 hook events")
 
         // Verify all expected events are present
+        XCTAssertTrue(hookEvents.contains("UserPromptSubmit"))
+        XCTAssertTrue(hookEvents.contains("SessionStart"))
         XCTAssertTrue(hookEvents.contains("PreToolUse"))
         XCTAssertTrue(hookEvents.contains("PostToolUse"))
         XCTAssertTrue(hookEvents.contains("Notification"))
         XCTAssertTrue(hookEvents.contains("Stop"))
         XCTAssertTrue(hookEvents.contains("StopFailure"))
+        XCTAssertTrue(hookEvents.contains("SessionEnd"))
+        XCTAssertTrue(hookEvents.contains("PermissionRequest"))
 
-        // Verify events NOT in v7.0 are absent
-        XCTAssertFalse(hookEvents.contains("PermissionRequest"), "PermissionRequest deprecated in v7.0")
-        XCTAssertFalse(hookEvents.contains("SessionStart"), "SessionStart not needed in v7.0")
-        XCTAssertFalse(hookEvents.contains("SessionEnd"), "SessionEnd not needed in v7.0")
+        // Verify only the explicitly removed event stays absent.
+        XCTAssertFalse(hookEvents.contains("PostToolUseFailure"), "PostToolUseFailure should remain removed")
     }
 
     /// Verify that a Stop event payload containing last_assistant_message can be extracted.

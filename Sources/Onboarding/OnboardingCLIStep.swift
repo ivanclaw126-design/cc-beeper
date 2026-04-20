@@ -8,7 +8,7 @@ struct OnboardingCLIStep: View {
             stepNumber: 1,
             totalSteps: OnboardingViewModel.totalCountedSteps,
             title: "Add hooks to Claude Code",
-            subtitle: "CC-Beeper needs 6 hook entries in ~/.claude/settings.json to work. Review or remove them anytime.",
+            subtitle: "CC-Beeper needs 9 hook entries in ~/.claude/settings.json to work. Review or remove them anytime.",
             primaryLabel: "Next",
             primaryAction: handlePrimary,
             skipLabel: "Skip",
@@ -81,7 +81,7 @@ struct SettingsJsonCard: View {
     @ViewBuilder private var badge: some View {
         switch status {
         case .pending:
-            badgePill(text: "+ 6 hooks", color: OnboardingTheme.green)
+            badgePill(text: "+ 9 hooks", color: OnboardingTheme.green)
         case .installed:
             badgePill(text: "Installed", color: OnboardingTheme.green)
         case .noClaude:

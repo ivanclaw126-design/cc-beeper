@@ -93,8 +93,10 @@ struct CompactView: View {
     }
 }
 
-#Preview {
-    CompactView()
-        .environmentObject(ClaudeMonitor())
-        .environmentObject(ThemeManager())
+private struct CompactView_Previews: PreviewProvider {
+    static var previews: some View {
+        CompactView()
+            .environmentObject(ClaudeMonitor())
+            .environmentObject(ThemeManager())
+    }
 }

@@ -1,6 +1,7 @@
 import XCTest
 
-/// Tests for HookDispatcher routing — verifies all 6 hook event types map to correct event types (TEST-03).
+/// Tests for HookDispatcher routing — verifies session lifecycle, monitoring, and permission
+/// hook events map to the expected internal event types (TEST-03).
 /// Uses replicated dispatch logic (no @testable import).
 
 private enum DispatchResult: Equatable {
@@ -15,6 +16,8 @@ private func dispatchHookEvent(_ hookEventName: String, notificationType: String
     switch hookEventName {
     case "UserPromptSubmit":
         return .async(eventType: "pre_tool")
+    case "SessionStart":
+        return .async(eventType: "session_start")
     case "PreToolUse":
         return .async(eventType: "pre_tool")
     case "PostToolUse":
@@ -23,6 +26,8 @@ private func dispatchHookEvent(_ hookEventName: String, notificationType: String
         return .async(eventType: "stop")
     case "StopFailure":
         return .async(eventType: "stop_failure")
+    case "SessionEnd":
+        return .async(eventType: "session_end")
     case "Notification":
         switch notificationType {
         case "permission_prompt":
@@ -55,6 +60,10 @@ final class HookDispatcherXCTests: XCTestCase {
         XCTAssertEqual(dispatchHookEvent("PreToolUse"), .async(eventType: "pre_tool"))
     }
 
+    func testSessionStartRoutesToSessionStart() {
+        XCTAssertEqual(dispatchHookEvent("SessionStart"), .async(eventType: "session_start"))
+    }
+
     func testPostToolUseRoutesToPostTool() {
         XCTAssertEqual(dispatchHookEvent("PostToolUse"), .async(eventType: "post_tool"))
     }
@@ -65,6 +74,10 @@ final class HookDispatcherXCTests: XCTestCase {
 
     func testStopFailureRoutesToStopFailure() {
         XCTAssertEqual(dispatchHookEvent("StopFailure"), .async(eventType: "stop_failure"))
+    }
+
+    func testSessionEndRoutesToSessionEnd() {
+        XCTAssertEqual(dispatchHookEvent("SessionEnd"), .async(eventType: "session_end"))
     }
 
     // MARK: - Blocking hook routing
@@ -105,10 +118,10 @@ final class HookDispatcherXCTests: XCTestCase {
         XCTAssertEqual(dispatchHookEvent("SomeNewEvent"), .ignored)
     }
 
-    // MARK: - All 6 registered hook types covered
+    // MARK: - Registered hook coverage
 
-    func testAllSixHookTypesRouteCorrectly() {
-        let hookTypes = ["UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "StopFailure", "Notification"]
+    func testAllRegisteredHookTypesRouteCorrectly() {
+        let hookTypes = ["UserPromptSubmit", "SessionStart", "PreToolUse", "PostToolUse", "Stop", "StopFailure", "SessionEnd", "Notification", "PermissionRequest"]
         for hookType in hookTypes {
             let result = dispatchHookEvent(hookType, notificationType: hookType == "Notification" ? "question" : nil)
             XCTAssertNotEqual(result, .ignored, "\(hookType) must not be ignored")

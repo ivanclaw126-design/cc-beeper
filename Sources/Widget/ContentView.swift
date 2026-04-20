@@ -145,8 +145,10 @@ struct ContentView: View {
     }
 }
 
-#Preview {
-    ContentView()
-        .environmentObject(ClaudeMonitor())
-        .environmentObject(ThemeManager())
+private struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+            .environmentObject(ClaudeMonitor())
+            .environmentObject(ThemeManager())
+    }
 }

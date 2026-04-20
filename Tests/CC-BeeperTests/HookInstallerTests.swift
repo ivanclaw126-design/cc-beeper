@@ -58,7 +58,7 @@ final class HookInstallerTests: XCTestCase {
         let hookMarker = "cc-beeper/port"
 
         // Write a settings.json that mirrors what HookInstaller.install() would produce
-        let asyncCmd = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && curl -s -o /dev/null -X POST http://localhost:${PORT}/hook -H 'Content-Type: application/json' -d @- --max-time 3 || true"
+        let asyncCmd = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && curl -s -o /dev/null -X POST http://127.0.0.1:${PORT}/hook -H 'Content-Type: application/json' -d @- --max-time 3 || true"
         let hookEntry: [String: Any] = [
             "type": "command",
             "command": asyncCmd,
@@ -93,18 +93,21 @@ final class HookInstallerTests: XCTestCase {
         XCTAssertTrue(found, "Expected to find cc-beeper HTTP hook entry in settings.json")
     }
 
-    /// Verifies all 6 hook events (4 async + 2 blocking) are accounted for.
-    func testAllSixHookEventsAreDeclared() throws {
-        let asyncEvents = ["PreToolUse", "PostToolUse", "Stop", "StopFailure"]
+    /// Verifies all 9 hook events (7 async + 2 blocking) are accounted for.
+    func testAllNineHookEventsAreDeclared() throws {
+        let asyncEvents = ["UserPromptSubmit", "SessionStart", "PreToolUse", "PostToolUse", "Stop", "StopFailure", "SessionEnd"]
         let blockingEvents = ["Notification", "PermissionRequest"]
         let allEvents = asyncEvents + blockingEvents
 
         // We verify this by replicating the event configs from HookInstaller
         let asyncConfigs: [(String, Int, String?)] = [
+            ("UserPromptSubmit", 5, nil),
+            ("SessionStart",   5, nil),
             ("PreToolUse",  5, "CC-Beeper monitoring\u{2026}"),
             ("PostToolUse", 5, nil),
             ("Stop",        5, nil),
             ("StopFailure", 5, nil),
+            ("SessionEnd",    5, nil),
         ]
         let blockingConfigs: [(String, Int, String?)] = [
             ("Notification",       60, nil),
@@ -115,9 +118,9 @@ final class HookInstallerTests: XCTestCase {
         let blockingNames = blockingConfigs.map(\.0)
         let allNames = asyncNames + blockingNames
 
-        XCTAssertEqual(asyncConfigs.count, 4, "Expected exactly 4 async hook events")
+        XCTAssertEqual(asyncConfigs.count, 7, "Expected exactly 7 async hook events")
         XCTAssertEqual(blockingConfigs.count, 2, "Expected exactly 2 blocking hook events")
-        XCTAssertEqual(allNames.count, 6, "Expected exactly 6 total hook events")
+        XCTAssertEqual(allNames.count, 9, "Expected exactly 9 total hook events")
 
         for event in asyncEvents {
             XCTAssertTrue(asyncNames.contains(event), "Missing async event: \(event)")

@@ -4,10 +4,9 @@
     {
       "identity" : "fluidaudio",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/FluidInference/FluidAudio.git",
+      "location" : "https://github.com/ivanclaw126-design/FluidAudio.git",
       "state" : {
-        "revision" : "9830ce835881c0d0d40f90aabfaae3a6da5bebfb",
-        "version" : "0.12.4"
+        "revision" : "fecfe09b33bc38210be85e9737264c00e8d9392a"
       }
     },
     {

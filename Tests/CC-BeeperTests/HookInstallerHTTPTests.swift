@@ -10,16 +10,18 @@ final class HookInstallerHTTPTests: XCTestCase {
 
     // Replicate constants from HookInstaller (must stay in sync)
     private let hookMarker = "cc-beeper/port"
-    private let asyncCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -o /dev/null -X POST http://localhost:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 3 || true"
-    private let blockingCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -X POST http://localhost:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 55"
+    private let asyncCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -o /dev/null -X POST http://127.0.0.1:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 3 || true"
+    private let blockingCommand = "PORT=$(cat ~/.claude/cc-beeper/port 2>/dev/null || echo 19222) && TOKEN=$(cat ~/.claude/cc-beeper/token 2>/dev/null) && curl -s -X POST http://127.0.0.1:${PORT}/hook -H 'Content-Type: application/json' -H \"Authorization: Bearer ${TOKEN}\" -d @- --max-time 55"
 
     // Replicate event configs from HookInstaller (must stay in sync)
     private let asyncConfigs: [(String, Int, String?)] = [
         ("UserPromptSubmit", 5, nil),
+        ("SessionStart",   5, nil),
         ("PreToolUse",  5, "CC-Beeper monitoring\u{2026}"),
         ("PostToolUse", 5, nil),
         ("Stop",        5, nil),
         ("StopFailure", 5, nil),
+        ("SessionEnd",    5, nil),
     ]
     private let blockingConfigs: [(String, Int, String?)] = [
         ("Notification",      60, nil),
@@ -43,6 +45,8 @@ final class HookInstallerHTTPTests: XCTestCase {
         XCTAssertTrue(asyncCommand.contains("curl"), "Async command must contain curl")
         XCTAssertTrue(asyncCommand.contains("-d @-"), "Async command must pipe stdin via -d @-")
         XCTAssertTrue(asyncCommand.contains(hookMarker), "Async command must contain cc-beeper/port marker")
+        XCTAssertTrue(asyncCommand.contains("http://127.0.0.1:${PORT}/hook"),
+                      "Async command must target 127.0.0.1 to match the local-only server binding")
     }
 
     /// Async hook command must suppress stdout for zero-noise operation (HOOK-03).
@@ -63,6 +67,8 @@ final class HookInstallerHTTPTests: XCTestCase {
     /// Blocking hook command must use 55-second max time for permission approval flow (per D-01).
     func testBlockingHookCommandHasMaxTimeFiftyFiveSeconds() {
         XCTAssertTrue(blockingCommand.contains("--max-time 55"), "Blocking command must have --max-time 55")
+        XCTAssertTrue(blockingCommand.contains("http://127.0.0.1:${PORT}/hook"),
+                      "Blocking command must target 127.0.0.1 to match the local-only server binding")
     }
 
     /// Blocking hook command must NOT suppress stdout (stdout carries response to Claude Code, per D-02).
@@ -132,9 +138,9 @@ final class HookInstallerHTTPTests: XCTestCase {
 
     // MARK: - Async hook metadata tests
 
-    /// All 4 async hook event configs must produce entries with async: true (HOOK-01).
+    /// All async hook event configs must produce entries with async: true (HOOK-01).
     func testAllAsyncHooksHaveAsyncTrue() {
-        XCTAssertEqual(asyncConfigs.count, 5, "Expected exactly 5 async event configs")
+        XCTAssertEqual(asyncConfigs.count, 7, "Expected exactly 7 async event configs")
         for (event, timeout, statusMessage) in asyncConfigs {
             var hookEntry: [String: Any] = [
                 "type": "command",
@@ -155,6 +161,16 @@ final class HookInstallerHTTPTests: XCTestCase {
         let eventNames = asyncConfigs.map(\.0)
         XCTAssertTrue(eventNames.contains("UserPromptSubmit"),
                       "UserPromptSubmit must be in asyncConfigs (AUDIT-03: Stewing bug fix)")
+    }
+
+    /// SessionStart and SessionEnd must be registered so CC-Beeper can track fresh sessions
+    /// immediately and clean up completed ones without waiting for later tool activity.
+    func testSessionLifecycleHooksAreRegistered() {
+        let eventNames = asyncConfigs.map(\.0)
+        XCTAssertTrue(eventNames.contains("SessionStart"),
+                      "SessionStart must be installed so a new Claude session is visible immediately")
+        XCTAssertTrue(eventNames.contains("SessionEnd"),
+                      "SessionEnd must be installed so ended sessions can be cleaned up deterministically")
     }
 
     /// UserPromptSubmit must NOT have a statusMessage (it fires silently).

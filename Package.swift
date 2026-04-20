@@ -5,7 +5,7 @@ let package = Package(
     name: "CC-Beeper",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.12.4"),
+        .package(url: "https://github.com/ivanclaw126-design/FluidAudio.git", revision: "fecfe09b33bc38210be85e9737264c00e8d9392a"),
         .package(url: "https://github.com/soffes/HotKey.git", from: "0.2.1"),
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.17.0"),
     ],
