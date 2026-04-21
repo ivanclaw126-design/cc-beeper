@@ -15,12 +15,17 @@ AppIcon.icns
 CLAUDE.md
 NOTARIZATION.md
 
+# Codex local config
+.codex/
+
 # Dev tooling
 *.html
 picked-sprites.json
 build-*.js
 gen-*.js
 *-alts.js
+main-*.js
+product-name-*.js
 
 # Backups
 *.bak
